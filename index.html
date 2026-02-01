@@ -192,10 +192,16 @@ function getStreetAlignment(streets, sunAz) {
 
 function buildAIContext(state, time, az, el) {
   const direct = sunVisible(state.lat, state.lng, az, el, state.buildings);
+
   return {
     timePhase: getTimePhase(el),
     sunVisible: direct,
-    streetAlignment: getStreetAlignment(state.streets, az)
+    streetAlignment: getStreetAlignment(state.streets, az),
+    location: {
+      lat: Number(state.lat.toFixed(6)),
+      lng: Number(state.lng.toFixed(6)),
+      radiusMeters: 300
+    }
   };
 }
 
@@ -446,3 +452,4 @@ return true;}
 
 </body>
 </html>
+
