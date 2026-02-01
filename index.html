@@ -209,6 +209,20 @@ function hideAILoading() {
   if (el) el.style.display = "none";
 }
 
+function renderPhotoIdeasFromBackend(ideas) {
+  const container = document.getElementById("aiIdeasContent");
+
+  container.innerHTML = ideas
+    .map(i => `
+      <div class="idea">
+        <div><strong>Practical:</strong> ${i.practical}</div>
+        <div><strong>Vibe:</strong> ${i.vibe}</div>
+        <div><strong>Nearby place:</strong> ${i.nearby}</div>
+      </div>
+    `)
+    .join("");
+}
+
 async function fetchPhotoIdeasFromBackend(ctx) {
   const res = await fetch(
     "https://light-scout-api.emil-dimitrov104.workers.dev",
@@ -223,6 +237,8 @@ async function fetchPhotoIdeasFromBackend(ctx) {
 }
 
 function renderPhotoIdeasMock(ctx) {
+  // kept for fallback / offline testing
+}
   const ideas = [];
 
   // IDEA 1 — Shadow & movement focused
@@ -273,19 +289,6 @@ function renderPhotoIdeasMock(ctx) {
     });
   }
 
-function renderPhotoIdeasFromBackend(ideas) {
-  const container = document.getElementById("aiIdeasContent");
-
-  container.innerHTML = ideas
-    .map(i => `
-      <div class="idea">
-        <div><strong>Practical:</strong> ${i.practical}</div>
-        <div><strong>Vibe:</strong> ${i.vibe}</div>
-        <div><strong>Nearby place:</strong> ${i.nearby}</div>
-      </div>
-    `)
-    .join("");
-}
 
   // Render to UI
   document.getElementById("photoIdeas").innerHTML = ideas
