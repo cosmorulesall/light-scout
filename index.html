@@ -212,15 +212,18 @@ function hideAILoading() {
 function renderPhotoIdeasFromBackend(ideas) {
   const container = document.getElementById("aiIdeasContent");
 
-  container.innerHTML = ideas
-    .map(i => `
-      <div class="idea">
-        <div><strong>Practical:</strong> ${i.practical}</div>
-        <div><strong>Vibe:</strong> ${i.vibe}</div>
-        <div><strong>Nearby place:</strong> ${i.nearby}</div>
-      </div>
-    `)
-    .join("");
+  if (!container) {
+    console.warn("aiIdeasContent not found");
+    return;
+  }
+
+  container.innerHTML = ideas.map(i => `
+    <div class="idea">
+      <div><strong>Practical:</strong> ${i.practical}</div>
+      <div><strong>Vibe:</strong> ${i.vibe}</div>
+      <div><strong>Nearby place:</strong> ${i.nearby}</div>
+    </div>
+  `).join("");
 }
 
 async function fetchPhotoIdeasFromBackend(ctx) {
@@ -234,72 +237,6 @@ async function fetchPhotoIdeasFromBackend(ctx) {
   );
 
   return res.json();
-}
-
-function renderPhotoIdeasMock(ctx) {
-  // kept for fallback / offline testing
-}
-  const ideas = [];
-
-  // IDEA 1 — Shadow & movement focused
-  if (ctx.timePhase === "golden hour") {
-    ideas.push({
-      practical:
-        "Look for people moving across side streets where low-angle sunlight creates long shadows and strong contrast between light and shade.",
-      vibe:
-        "In many European and historic urban areas, golden hour often brings a calmer, more reflective mood that suits slower, observational compositions.",
-      nearby:
-        "If nearby, a historic square or civic building could offer clean sightlines and consistent foot traffic."
-    });
-  }
-
-  // IDEA 2 — Obstructed light & transitions
-  if (!ctx.sunVisible) {
-    ideas.push({
-      practical:
-        "Position yourself at the edge of shade and sunlight to capture subjects as they transition between darkness and light.",
-      vibe:
-        "Dense urban environments often create a layered, cinematic feel, where moments briefly emerge from shadow before disappearing again.",
-      nearby:
-        "If nearby, a museum entrance, transit hub, or large public building may naturally funnel people through changing light."
-    });
-  }
-
-  // IDEA 3 — Strong street alignment
-  if (ctx.streetAlignment === "strong") {
-    ideas.push({
-      practical:
-        "Shoot into the light along streets aligned with the sun to create silhouettes, rim lighting, and graphic compositions.",
-      vibe:
-        "Cities with strong architectural axes often feel deliberate and formal, lending themselves to bold, structured frames.",
-      nearby:
-        "If nearby, a monument, statue, or major boulevard could reinforce the sense of scale and direction."
-    });
-  }
-
-  // Fallback idea
-  if (!ideas.length) {
-    ideas.push({
-      practical:
-        "Focus on textures, reflections, and small human interactions with the built environment.",
-      vibe:
-        "Every city has its own rhythm, which often reveals itself in quieter details rather than obvious scenes.",
-      nearby:
-        "If nearby, a park edge, public seating area, or pedestrian street could provide subtle everyday moments."
-    });
-  }
-
-
-  // Render to UI
-  document.getElementById("photoIdeas").innerHTML = ideas
-    .map(i => `
-      <div class="idea">
-        <div><strong>Practical:</strong> ${i.practical}</div>
-        <div><strong>Vibe:</strong> ${i.vibe}</div>
-        <div><strong>Nearby place:</strong> ${i.nearby}</div>
-      </div>
-    `)
-    .join("");
 }
 
 /* ================= ANALYSIS ================= */
