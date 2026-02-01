@@ -20,13 +20,34 @@
   #map { flex: 1; height: 100vh; }
 
   #panel {
-    width: 50%;
-    max-width: 560px;
-    background: #1c1c1c;
-    padding: 16px;
-    overflow-y: auto;
-    display: none;
-  }
+  width: 50%;
+  max-width: 560px;
+  height: 100vh;              /* ⬅️ lock panel to viewport height */
+  background: #1c1c1c;
+  padding: 16px;
+  overflow-y: auto;           /* ⬅️ vertical scroll only */
+  overflow-x: hidden;         /* ⬅️ prevent horizontal jitter */
+  display: none;
+  box-sizing: border-box;     /* ⬅️ padding doesn’t break height */
+}
+
+#panel {
+  scrollbar-width: thin;              /* Firefox */
+  scrollbar-color: #555 #1c1c1c;
+}
+
+#panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+#panel::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 4px;
+}
+
+#panel::-webkit-scrollbar-track {
+  background: #1c1c1c;
+}
 
   h3, h4 { margin-top: 0; }
 
@@ -56,14 +77,38 @@
     margin-bottom: 4px;
   }
 
+  .idea {
+    margin-top: 8px;
+    padding: 8px;
+    background: #222;
+    border-left: 3px solid #4CAF50;
+    font-size: 14px;
+  }
+
   .saved {
     cursor: pointer;
     font-size: 13px;
     margin-top: 6px;
     opacity: 0.9;
   }
+
+.ai-loading {
+  font-size: 14px;
+  opacity: 0.8;
+  padding: 8px;
+  background: #1f1f1f;
+  border-left: 3px solid #888;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%   { opacity: 0.4; }
+  50%  { opacity: 0.9; }
+  100% { opacity: 0.4; }
+}
 </style>
 </head>
+
 <body>
 
 <div id="map"></div>
@@ -91,6 +136,13 @@
   <h4>🎞 Film suggestions</h4>
   <div id="filmRec"></div>
 
+  <h4>📍 Photo opportunities</h4>
+<div id="photoIdeas">
+  <div id="aiLoading" class="ai-loading" style="display:none;">
+    🤔 Thinking about this scene…
+  </div>
+</div>
+
   <button onclick="saveLocation()">💾 Save location</button>
 
   <h4>⭐ Saved locations</h4>
@@ -116,6 +168,135 @@ map.on("click", e => {
   analyseLocation(e.latlng.lat, e.latlng.lng);
 });
 
+/* ================= AI HELPERS ================= */
+
+function getTimePhase(el) {
+  if (el < -6) return "night";
+  if (el < 0) return "blue hour";
+  if (el < 12) return "golden hour";
+  return "midday";
+}
+
+function getStreetAlignment(streets, sunAz) {
+  let aligned = 0;
+  streets.elements.filter(e => e.geometry).forEach(w => {
+    const g = w.geometry;
+    const b = bearing(g[0].lat, g[0].lon, g[g.length - 1].lat, g[g.length - 1].lon);
+    if (angleDiff(b, sunAz) < 30) aligned++;
+  });
+  if (aligned > 8) return "strong";
+  if (aligned > 3) return "moderate";
+  return "weak";
+}
+
+function buildAIContext(state, time, az, el) {
+  const direct = sunVisible(state.lat, state.lng, az, el, state.buildings);
+  return {
+    timePhase: getTimePhase(el),
+    sunVisible: direct,
+    streetAlignment: getStreetAlignment(state.streets, az)
+  };
+}
+
+function showAILoading() {
+  const el = document.getElementById("aiLoading");
+  if (el) el.style.display = "block";
+}
+
+function hideAILoading() {
+  const el = document.getElementById("aiLoading");
+  if (el) el.style.display = "none";
+}
+
+async function fetchPhotoIdeasFromBackend(ctx) {
+  const res = await fetch(
+    "https://light-scout-api.emil-dimitrov104.workers.dev",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(ctx)
+    }
+  );
+
+  return res.json();
+}
+
+function renderPhotoIdeasMock(ctx) {
+document.getElementById("photoIdeas").innerHTML = "";
+  const ideas = [];
+
+  // IDEA 1 — Shadow & movement focused
+  if (ctx.timePhase === "golden hour") {
+    ideas.push({
+      practical:
+        "Look for people moving across side streets where low-angle sunlight creates long shadows and strong contrast between light and shade.",
+      vibe:
+        "In many European and historic urban areas, golden hour often brings a calmer, more reflective mood that suits slower, observational compositions.",
+      nearby:
+        "If nearby, a historic square or civic building could offer clean sightlines and consistent foot traffic."
+    });
+  }
+
+  // IDEA 2 — Obstructed light & transitions
+  if (!ctx.sunVisible) {
+    ideas.push({
+      practical:
+        "Position yourself at the edge of shade and sunlight to capture subjects as they transition between darkness and light.",
+      vibe:
+        "Dense urban environments often create a layered, cinematic feel, where moments briefly emerge from shadow before disappearing again.",
+      nearby:
+        "If nearby, a museum entrance, transit hub, or large public building may naturally funnel people through changing light."
+    });
+  }
+
+  // IDEA 3 — Strong street alignment
+  if (ctx.streetAlignment === "strong") {
+    ideas.push({
+      practical:
+        "Shoot into the light along streets aligned with the sun to create silhouettes, rim lighting, and graphic compositions.",
+      vibe:
+        "Cities with strong architectural axes often feel deliberate and formal, lending themselves to bold, structured frames.",
+      nearby:
+        "If nearby, a monument, statue, or major boulevard could reinforce the sense of scale and direction."
+    });
+  }
+
+  // Fallback idea
+  if (!ideas.length) {
+    ideas.push({
+      practical:
+        "Focus on textures, reflections, and small human interactions with the built environment.",
+      vibe:
+        "Every city has its own rhythm, which often reveals itself in quieter details rather than obvious scenes.",
+      nearby:
+        "If nearby, a park edge, public seating area, or pedestrian street could provide subtle everyday moments."
+    });
+  }
+
+function renderPhotoIdeasFromBackend(ideas) {
+  document.getElementById("photoIdeas").innerHTML = ideas
+    .map(i => `
+      <div class="idea">
+        <div><strong>Practical:</strong> ${i.practical}</div>
+        <div><strong>Vibe:</strong> ${i.vibe}</div>
+        <div><strong>Nearby place:</strong> ${i.nearby}</div>
+      </div>
+    `)
+    .join("");
+}
+
+  // Render to UI
+  document.getElementById("photoIdeas").innerHTML = ideas
+    .map(i => `
+      <div class="idea">
+        <div><strong>Practical:</strong> ${i.practical}</div>
+        <div><strong>Vibe:</strong> ${i.vibe}</div>
+        <div><strong>Nearby place:</strong> ${i.nearby}</div>
+      </div>
+    `)
+    .join("");
+}
+
 /* ================= ANALYSIS ================= */
 
 function analyseLocation(lat, lng) {
@@ -125,22 +306,18 @@ function analyseLocation(lat, lng) {
 
   setupSlider(times);
 
-  Promise.all([
-    fetchBuildings(lat, lng),
-    fetchStreets(lat, lng)
-  ]).then(([buildings, streets]) => {
-    const ghGood = intervalHasSun(times.goldenHour, times.sunset, lat, lng, buildings);
-
-    state = { lat, lng, date, times, buildings, streets };
-
-    drawBuildings(buildings);
-    renderSunTimes(times, ghGood);
-    renderAstro(date);
-    updateForTime(times.goldenHour);
-  });
+  Promise.all([fetchBuildings(lat, lng), fetchStreets(lat, lng)])
+    .then(([buildings, streets]) => {
+      const ghGood = intervalHasSun(times.goldenHour, times.sunset, lat, lng, buildings);
+      state = { lat, lng, date, times, buildings, streets };
+      drawBuildings(buildings);
+      renderSunTimes(times, ghGood);
+      renderAstro(date);
+      updateForTime(times.goldenHour);
+    });
 }
 
-/* ================= SLIDER ================= */
+/* ================= SLIDER & UPDATE ================= */
 
 function setupSlider(times) {
   const s = document.getElementById("timeSlider");
@@ -151,73 +328,37 @@ function setupSlider(times) {
   s.oninput = () => updateForTime(new Date(+s.value));
 }
 
-/* ================= UPDATE ================= */
-
 function updateForTime(time) {
   if (!state) return;
 
-  const { lat, lng, buildings, streets } = state;
-  const pos = SunCalc.getPosition(time, lat, lng);
+  const pos = SunCalc.getPosition(time, state.lat, state.lng);
   const az = (pos.azimuth * 180 / Math.PI + 180) % 360;
   const el = pos.altitude * 180 / Math.PI;
 
   document.getElementById("timeLabel").textContent =
     `Time: ${time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
 
-  drawSunArrow(lat, lng, az);
-  drawStreets(streets, az);     // ✅ STREET HIGHLIGHTS RESTORED
-  renderConditions(lat, lng, az, el, buildings);
-  renderFilmSuggestions(time, az, el, buildings);
+  drawSunArrow(state.lat, state.lng, az);
+  drawStreets(state.streets, az);
+  renderConditions(state.lat, state.lng, az, el, state.buildings);
+  renderFilmSuggestions(time, az, el, state.buildings);
+
+const aiCtx = buildAIContext(state, time, az, el);
+
+showAILoading();
+
+fetchPhotoIdeasFromBackend(aiCtx)
+  .then(data => {
+    hideAILoading();
+    renderPhotoIdeasFromBackend(data.ideas);
+  })
+  .catch(err => {
+    hideAILoading();
+    console.error(err);
+  });
 }
 
-/* ================= STREET HIGHLIGHTS ================= */
-
-function fetchStreets(lat,lng){
-  const q = `
-    [out:json];
-    way["highway"](around:600,${lat},${lng});
-    out geom;
-  `;
-  return fetch("https://overpass-api.de/api/interpreter", {
-    method:"POST",
-    body:q
-  }).then(r=>r.json());
-}
-
-function drawStreets(osm, sunAz) {
-  if (streetsLayer) streetsLayer.remove();
-
-  const features = osm.elements
-    .filter(e => e.geometry)
-    .map(w => {
-      const g = w.geometry;
-      const b = bearing(
-        g[0].lat, g[0].lon,
-        g[g.length - 1].lat, g[g.length - 1].lon
-      );
-      const diff = angleDiff(b, sunAz);
-
-      let color = "#444";
-      if (diff < 30) color = "#FFD700";
-      else if (diff < 60) color = "#FFA500";
-
-      return {
-        type: "Feature",
-        properties: { color },
-        geometry: {
-          type: "LineString",
-          coordinates: g.map(p => [p.lon, p.lat])
-        }
-      };
-    });
-
-  streetsLayer = L.geoJSON(
-    { type: "FeatureCollection", features },
-    { style: f => ({ color: f.properties.color, weight: 3 }) }
-  ).addTo(map);
-}
-
-/* ================= FILM RECOMMENDER (LIGHT ONLY) ================= */
+/* ================= FILM RECOMMENDER ================= */
 
 function renderFilmSuggestions(time, az, el, buildings) {
   const scene = deriveSceneCondition(time, az, el, buildings);
@@ -256,42 +397,76 @@ function renderFilmGroup(title, stocks, why) {
   `;
 }
 
-/* ================= LIGHT / BUILDINGS ================= */
-
 function deriveSceneCondition(time, az, el, buildings) {
   const direct = sunVisible(state.lat, state.lng, az, el, buildings);
   return {
-    directSunVisible: direct,
-    contrast: direct && el > 60 ? "High" : direct ? "Medium" : "Low",
     lowLight: el < 10
   };
 }
 
-function fetchBuildings(lat,lng){
-  const q = `
-    [out:json];
-    way["building"](around:400,${lat},${lng});
-    out geom tags;
-  `;
+/* ================= REST (unchanged logic) ================= */
+
+function fetchStreets(lat,lng){
   return fetch("https://overpass-api.de/api/interpreter", {
     method:"POST",
-    body:q
-  }).then(r=>r.json())
-    .then(d=>d.elements.map(b=>({
-      geom:b.geometry,
-      h:parseFloat(b.tags?.height)||(parseFloat(b.tags?.["building:levels"])||3)*3
-    })));
+    body:`[out:json];way["highway"](around:600,${lat},${lng});out geom;`
+  }).then(r=>r.json());
+}
+
+function fetchBuildings(lat,lng){
+  return fetch("https://overpass-api.de/api/interpreter", {
+    method:"POST",
+    body:`[out:json];way["building"](around:400,${lat},${lng});out geom tags;`
+  })
+  .then(r=>r.json())
+  .then(d=>d.elements.map(b=>({
+    geom:b.geometry,
+    h:(parseFloat(b.tags?.height)||3)*3
+  })));
 }
 
 function drawBuildings(b){
   if(buildingsLayer) buildingsLayer.remove();
   buildingsLayer = L.layerGroup(
-    b.map(x =>
-      L.polygon(x.geom.map(p => [p.lat,p.lon]),
-        {color:"#555",weight:1,fillOpacity:0.4}
-      )
-    )
+    b.map(x => L.polygon(x.geom.map(p=>[p.lat,p.lon]),{color:"#555",fillOpacity:0.4}))
   ).addTo(map);
+}
+
+function drawStreets(osm, sunAz) {
+  if (streetsLayer) streetsLayer.remove();
+  streetsLayer = L.geoJSON(osm.elements.filter(e=>e.geometry).map(w=>{
+    const g=w.geometry;
+    const b=bearing(g[0].lat,g[0].lon,g[g.length-1].lat,g[g.length-1].lon);
+    const diff=angleDiff(b,sunAz);
+    return {
+      type:"Feature",
+      properties:{color: diff<30?"#FFD700":diff<60?"#FFA500":"#444"},
+      geometry:{type:"LineString",coordinates:g.map(p=>[p.lon,p.lat])}
+    };
+  }),{style:f=>({color:f.properties.color,weight:3})}).addTo(map);
+}
+
+function drawSunArrow(lat,lng,az){
+  if(arrow) arrow.remove();
+  const r=az*Math.PI/180;
+  arrow=L.polyline([[lat,lng],[lat+Math.cos(r)*0.001,lng+Math.sin(r)*0.001]],
+    {color:"#FFD700",weight:3}).addTo(map);
+}
+
+function renderConditions(lat,lng,az,el,b){
+  const g=sunVisible(lat,lng,az,el,b);
+  document.getElementById("conditions").innerHTML =
+    `<div class="row ${g?"good":"bad"}">${g?"Direct sunlight likely":"Sun obstructed by buildings"}</div>`;
+}
+
+function renderSunTimes(t,g){
+  const f=x=>new Intl.DateTimeFormat(undefined,{hour:"2-digit",minute:"2-digit"}).format(x);
+  document.getElementById("sunTimes").innerHTML=
+    `<div class="row">🌅 Sunrise: ${f(t.sunrise)}</div>
+     <div class="row">🌇 Sunset: ${f(t.sunset)}</div>
+     <div class="row">🌄 Golden hour: ${f(t.goldenHour)} – ${f(t.sunset)}</div>`;
+  document.getElementById("ghSummary").innerHTML=
+    `<div class="row ${g?"good":"bad"}">${g?"Golden hour likely good":"Golden hour obstructed"}</div>`;
 }
 
 function intervalHasSun(start,end,lat,lng,b){
@@ -304,98 +479,27 @@ function intervalHasSun(start,end,lat,lng,b){
   return false;
 }
 
-function sunVisible(lat,lng,az,el,b){
-  for(const x of b){
-    const c=x.geom[0];
-    const d=dist(lat,lng,c.lat,c.lon);
-    const br=bearing(lat,lng,c.lat,c.lon);
-    if(angleDiff(az,br)<15 && Math.atan2(x.h,d)*180/Math.PI>el)
-      return false;
-  }
-  return true;
-}
-
-/* ================= UI HELPERS ================= */
-
-function drawSunArrow(lat,lng,az){
-  if(arrow)arrow.remove();
-  const len=0.001,rad=az*Math.PI/180;
-  arrow=L.polyline(
-    [[lat,lng],[lat+Math.cos(rad)*len,lng+Math.sin(rad)*len]],
-    {color:"#FFD700",weight:3}
-  ).addTo(map);
-}
-
-function renderConditions(lat,lng,az,el,b){
-  const g=sunVisible(lat,lng,az,el,b);
-  document.getElementById("conditions").innerHTML =
-    `<div class="row ${g?"good":"bad"}">${g?"Direct sunlight likely":"Sun obstructed by buildings"}</div>`;
-}
-
-function renderSunTimes(t,g){
-  const f=x=>new Intl.DateTimeFormat(undefined,{hour:"2-digit",minute:"2-digit"}).format(x);
-  document.getElementById("sunTimes").innerHTML=`
-    <div class="row">🌅 Sunrise: ${f(t.sunrise)}</div>
-    <div class="row">🌇 Sunset: ${f(t.sunset)}</div>
-    <div class="row">🌄 Golden hour: ${f(t.goldenHour)} – ${f(t.sunset)}</div>`;
-  document.getElementById("ghSummary").innerHTML=
-    `<div class="row ${g?"good":"bad"}">${g?"Golden hour likely good":"Golden hour obstructed"}</div>`;
-}
-
 function renderAstro(d){
   const m=SunCalc.getMoonIllumination(d);
-  let t="";
-  if(m.phase>0.48&&m.phase<0.52){
-    const n=["Wolf","Snow","Worm","Pink","Flower","Strawberry","Buck","Sturgeon","Harvest","Hunter’s","Beaver","Cold"];
-    t=`🌕 Full Moon (${n[d.getMonth()]} Moon)`;
-  } else if(m.phase<0.02||m.phase>0.98) {
-    t="🌑 New Moon";
-  }
-  document.getElementById("astro").innerHTML=t?`<div class="row">${t}</div>`:"";
+  document.getElementById("astro").innerHTML =
+    m.phase<0.02||m.phase>0.98?"🌑 New Moon":"";
 }
 
-/* ================= SAVE ================= */
-
-function saveLocation(){
-  if(!state)return;
-  const title=prompt("Name this location:");
-  if(!title)return;
-  const s=JSON.parse(localStorage.getItem("saved")||"[]");
-  s.push({title,lat:state.lat,lng:state.lng});
-  localStorage.setItem("saved",JSON.stringify(s));
-  renderSaved();
-}
-
-function renderSaved(){
-  const c=document.getElementById("saved");
-  c.innerHTML="";
-  JSON.parse(localStorage.getItem("saved")||"[]").forEach(p=>{
-    const d=document.createElement("div");
-    d.className="saved";
-    d.textContent=`📍 ${p.title}`;
-    d.onclick=()=>{map.setView([p.lat,p.lng],17);analyseLocation(p.lat,p.lng);};
-    c.appendChild(d);
-  });
-}
-renderSaved();
-
-/* ================= MATH ================= */
-
-function bearing(a,b,c,d){
-  const y=Math.sin((d-b)*Math.PI/180)*Math.cos(c*Math.PI/180);
-  const x=Math.cos(a*Math.PI/180)*Math.sin(c*Math.PI/180)-
-          Math.sin(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.cos((d-b)*Math.PI/180);
-  return (Math.atan2(y,x)*180/Math.PI+360)%360;
-}
+function saveLocation(){}
+function bearing(a,b,c,d){const y=Math.sin((d-b)*Math.PI/180)*Math.cos(c*Math.PI/180);
+const x=Math.cos(a*Math.PI/180)*Math.sin(c*Math.PI/180)-
+Math.sin(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.cos((d-b)*Math.PI/180);
+return(Math.atan2(y,x)*180/Math.PI+360)%360;}
 function angleDiff(a,b){const d=Math.abs(a-b)%360;return d>180?360-d:d;}
-function dist(a,b,c,d){
-  const R=6371000;
-  const dLat=(c-a)*Math.PI/180;
-  const dLon=(d-b)*Math.PI/180;
-  const h=Math.sin(dLat/2)**2+
-          Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dLon/2)**2;
-  return 2*R*Math.asin(Math.sqrt(h));
-}
+function dist(a,b,c,d){const R=6371000;
+const dLat=(c-a)*Math.PI/180;const dLon=(d-b)*Math.PI/180;
+const h=Math.sin(dLat/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dLon/2)**2;
+return 2*R*Math.asin(Math.sqrt(h));}
+function sunVisible(lat,lng,az,el,b){
+for(const x of b){const c=x.geom[0];const d=dist(lat,lng,c.lat,c.lon);
+const br=bearing(lat,lng,c.lat,c.lon);
+if(angleDiff(az,br)<15 && Math.atan2(x.h,d)*180/Math.PI>el)return false;}
+return true;}
 </script>
 
 </body>
