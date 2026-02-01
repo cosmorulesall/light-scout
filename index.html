@@ -136,11 +136,12 @@
   <h4>🎞 Film suggestions</h4>
   <div id="filmRec"></div>
 
-  <h4>📍 Photo opportunities</h4>
+<h4>📍 Photo opportunities</h4>
 <div id="photoIdeas">
   <div id="aiLoading" class="ai-loading" style="display:none;">
     🤔 Thinking about this scene…
   </div>
+  <div id="aiIdeasContent"></div>
 </div>
 
   <button onclick="saveLocation()">💾 Save location</button>
@@ -222,7 +223,6 @@ async function fetchPhotoIdeasFromBackend(ctx) {
 }
 
 function renderPhotoIdeasMock(ctx) {
-document.getElementById("photoIdeas").innerHTML = "";
   const ideas = [];
 
   // IDEA 1 — Shadow & movement focused
@@ -274,7 +274,9 @@ document.getElementById("photoIdeas").innerHTML = "";
   }
 
 function renderPhotoIdeasFromBackend(ideas) {
-  document.getElementById("photoIdeas").innerHTML = ideas
+  const container = document.getElementById("aiIdeasContent");
+
+  container.innerHTML = ideas
     .map(i => `
       <div class="idea">
         <div><strong>Practical:</strong> ${i.practical}</div>
@@ -354,7 +356,7 @@ fetchPhotoIdeasFromBackend(aiCtx)
   })
   .catch(err => {
     hideAILoading();
-    console.error(err);
+    console.error("AI fetch failed:", err);
   });
 }
 
