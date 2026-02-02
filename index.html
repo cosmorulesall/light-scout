@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,103 +10,241 @@
 <script src="https://unpkg.com/suncalc@1.9.0/suncalc.js"></script>
 
 <style>
-  body {
-    margin: 0;
-    background: #111;
-    color: #eee;
-    font-family: system-ui, sans-serif;
-    display: flex;
-  }
-
-  #map { flex: 1; height: 100vh; }
-
-  #panel {
-  width: 50%;
-  max-width: 560px;
-  height: 100vh;              /* ⬅️ lock panel to viewport height */
-  background: #1c1c1c;
-  padding: 16px;
-  overflow-y: auto;           /* ⬅️ vertical scroll only */
-  overflow-x: hidden;         /* ⬅️ prevent horizontal jitter */
-  display: none;
-  box-sizing: border-box;     /* ⬅️ padding doesn’t break height */
+:root {
+  --bg-main: #0f1115;
+  --bg-panel: #151821;
+  --bg-card: #1b2030;
+  --text-primary: #e6e8ef;
+  --text-secondary: #9aa1b2;
+  --accent: #f5c77a;
+  --accent-soft: rgba(245, 199, 122, 0.15);
+  --border-soft: rgba(255, 255, 255, 0.06);
 }
+
+body {
+  margin: 0;
+  background: var(--bg-main);
+  color: var(--text-primary);
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  display: flex;
+}
+
+#map {
+  flex: 1;
+  height: 100vh;
+}
+
+/* Panel */
 
 #panel {
-  scrollbar-width: thin;              /* Firefox */
-  scrollbar-color: #555 #1c1c1c;
+  width: 420px;
+  max-width: 420px;
+  height: 100vh;
+  background: linear-gradient(180deg, #151821 0%, #121521 100%);
+  padding: 20px;
+  overflow-y: auto;
+  display: none;
+  box-shadow: -20px 0 40px rgba(0,0,0,0.35);
+  box-sizing: border-box;
 }
+
+/* Scrollbar */
 
 #panel::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
-
 #panel::-webkit-scrollbar-thumb {
-  background: #555;
+  background: rgba(255,255,255,0.15);
   border-radius: 4px;
 }
 
-#panel::-webkit-scrollbar-track {
-  background: #1c1c1c;
+/* Typography */
+
+h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 12px 0;
 }
 
-  h3, h4 { margin-top: 0; }
+h4 {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  margin: 24px 0 8px 0;
+}
 
-  .row { font-size: 14px; margin-bottom: 6px; }
+/* Cards */
 
-  input, button {
-    width: 100%;
-    background: #222;
-    color: #eee;
-    border: 1px solid #444;
-    padding: 6px;
-    margin-top: 6px;
-  }
+.section-card {
+  background: var(--bg-card);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 12px;
+  box-shadow: inset 0 0 0 1px var(--border-soft);
+}
 
-  .good { color: #FFD700; }
-  .bad { color: #777; }
+/* Rows */
 
-  .film-group {
-    margin-top: 10px;
-    padding: 8px;
-    background: #222;
-    border-left: 3px solid #FFD700;
-  }
+.row {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
 
-  .film-title {
-    font-weight: bold;
-    margin-bottom: 4px;
-  }
+/* Inputs */
 
-  .idea {
-    margin-top: 8px;
-    padding: 8px;
-    background: #222;
-    border-left: 3px solid #4CAF50;
-    font-size: 14px;
-  }
+input[type="date"],
+input[type="range"] {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+}
 
-  .saved {
-    cursor: pointer;
-    font-size: 13px;
-    margin-top: 6px;
-    opacity: 0.9;
-  }
+/* Buttons */
+
+button {
+  width: 100%;
+  border-radius: 12px;
+  border: none;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+button.primary {
+  background: linear-gradient(135deg, var(--accent), #e0b45f);
+  color: #1b1406;
+}
+
+button.primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(245,199,122,0.35);
+}
+
+button.secondary {
+  background: rgba(255,255,255,0.06);
+  color: var(--text-primary);
+}
+
+button.secondary:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+/* Film cards */
+
+.film-group {
+  background: rgba(255,255,255,0.04);
+  border-radius: 12px;
+  padding: 10px;
+  margin-bottom: 8px;
+}
+
+.film-title {
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+/* Photo ideas */
+
+.idea {
+  background: rgba(255,255,255,0.04);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+.idea strong {
+  color: var(--accent);
+}
+
+/* Loading */
 
 .ai-loading {
-  font-size: 14px;
-  opacity: 0.8;
-  padding: 8px;
-  background: #1f1f1f;
-  border-left: 3px solid #888;
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: 10px;
   animation: pulse 1.4s ease-in-out infinite;
 }
 
 @keyframes pulse {
-  0%   { opacity: 0.4; }
-  50%  { opacity: 0.9; }
+  0% { opacity: 0.4; }
+  50% { opacity: 0.9; }
   100% { opacity: 0.4; }
 }
+
+/* Welcome Modal */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 17, 21, 0.65);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.modal-card {
+  background: rgba(27, 32, 48, 0.85);
+  border-radius: 16px;
+  padding: 24px;
+  width: 100%;
+  max-width: 520px;
+  box-shadow: 0 40px 80px rgba(0,0,0,0.45);
+  box-sizing: border-box;
+}
+
+.modal-card h2 {
+  margin-top: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.modal-card h5 {
+  margin: 16px 0 8px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.modal-card p {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.modal-card ul {
+  padding-left: 18px;
+  margin: 8px 0 16px;
+}
+
+.modal-card li {
+  font-size: 13px;
+  margin-bottom: 6px;
+  color: var(--text-secondary);
+}
+
+.modal-note {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+
 </style>
 </head>
 
@@ -114,44 +253,54 @@
 <div id="map"></div>
 
 <div id="panel">
-  <h3>📍 Light & Film Explorer</h3>
+<div style="display:flex; align-items:center; justify-content:space-between;">
+  <h3>Light & Film Explorer</h3>
+  <button
+    class="secondary"
+    style="width:auto; padding:6px 10px; font-size:14px;"
+    onclick="openWelcome()"
+    title="About this tool"
+  >
+    ?
+  </button>
+</div>
 
   <input type="date" id="datePicker"/>
 
   <div id="astro"></div>
 
-  <h4>☀️ Sun times</h4>
-  <div id="sunTimes"></div>
+<h4>☀️ Sun times</h4>
+<div class="section-card" id="sunTimes"></div>
 
   <h4>📷 Golden hour conditions</h4>
-  <div id="ghSummary"></div>
+  <div class="section-card" id="ghSummary"></div>
 
   <h4>⏱ Time of day</h4>
   <input type="range" id="timeSlider"/>
   <div id="timeLabel" class="row"></div>
 
   <h4>📸 Current light</h4>
-  <div id="conditions"></div>
+  <div class="section-card" id="conditions"></div>
 
   <h4>🎞 Film suggestions</h4>
-  <div id="filmRec"></div>
+  <div class="section-card" id="filmRec"></div>
 
 <h4>📍 Photo opportunities</h4>
-<div id="photoIdeas">
+<div class="section-card" id="photoIdeas">
   <div id="aiLoading" class="ai-loading" style="display:none;">
     🤔 Thinking about this scene…
   </div>
   <div id="aiIdeasContent"></div>
 </div>
 
-<button id="fetchIdeasBtn" onclick="fetchPhotoOpportunities()">
-  🔍 Find photo opportunities
+<button class="primary" id="fetchIdeasBtn" onclick="fetchPhotoOpportunities()">
+  Find photo opportunities
 </button>
 
-  <button onclick="saveLocation()">💾 Save location</button>
+  <button class="secondary" onclick="saveLocation()">Save location</button>
 
   <h4>⭐ Saved locations</h4>
-  <div id="saved"></div>
+  <div class="section-card" id="saved"></div>
 </div>
 
 <script>
@@ -466,7 +615,66 @@ for(const x of b){const c=x.geom[0];const d=dist(lat,lng,c.lat,c.lon);
 const br=bearing(lat,lng,c.lat,c.lon);
 if(angleDiff(az,br)<15 && Math.atan2(x.h,d)*180/Math.PI>el)return false;}
 return true;}
+
+// Welcome modal logic
+
+function openWelcome() {
+  document.getElementById("welcomeOverlay").style.display = "flex";
+}
+
+function closeWelcome() {
+  document.getElementById("welcomeOverlay").style.display = "none";
+  localStorage.setItem("lightFilmExplorerSeen", "true");
+}
+
+// Show on first visit
+window.addEventListener("load", () => {
+  const hasSeen = localStorage.getItem("lightFilmExplorerSeen");
+  if (!hasSeen) {
+    openWelcome();
+  }
+});
+
+
 </script>
+
+<!-- Welcome / Help Modal -->
+<div id="welcomeOverlay" class="modal-overlay" style="display:none;">
+  <div class="modal-card">
+    <h2>Welcome to Light & Film Explorer</h2>
+
+    <p>
+      Light & Film Explorer is designed to help photographers think ahead —
+      before they arrive on location.
+    </p>
+
+    <p>
+      The tool visualises how sunlight, shadows, and urban geometry interact
+      at any place and time, and suggests how to respond photographically.
+    </p>
+
+    <h5>How it works</h5>
+    <ul>
+      <li>Click anywhere on the map to analyse the light at that location</li>
+      <li>Use the time slider to explore how conditions change through the day</li>
+      <li>Review film stock suggestions based on contrast and light quality</li>
+      <li>
+        When ready, use <strong>Find photo opportunities</strong> to generate
+        nearby, walkable shooting ideas
+      </li>
+    </ul>
+
+    <p class="modal-note">
+      Photo opportunities are intended as prompts for exploration — not instructions.
+      The final photograph is always yours.
+    </p>
+
+    <div class="modal-actions">
+      <button class="primary" onclick="closeWelcome()">Close</button>
+    </div>
+  </div>
+</div>
+
 
 </body>
 </html>
