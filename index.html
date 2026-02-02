@@ -144,6 +144,10 @@
   <div id="aiIdeasContent"></div>
 </div>
 
+<button id="fetchIdeasBtn" onclick="fetchPhotoOpportunities()">
+  🔍 Find photo opportunities
+</button>
+
   <button onclick="saveLocation()">💾 Save location</button>
 
   <h4>⭐ Saved locations</h4>
@@ -245,6 +249,33 @@ async function fetchPhotoIdeasFromBackend(ctx) {
   return res.json();
 }
 
+function fetchPhotoOpportunities() {
+  if (!state) return;
+
+  // Clear previous ideas (optional UX choice)
+  document.getElementById("aiIdeasContent").innerHTML = "";
+
+  const time = new Date(+document.getElementById("timeSlider").value);
+  const pos = SunCalc.getPosition(time, state.lat, state.lng);
+  const az = (pos.azimuth * 180 / Math.PI + 180) % 360;
+  const el = pos.altitude * 180 / Math.PI;
+
+  const aiCtx = buildAIContext(state, time, az, el);
+
+  showAILoading();
+
+  fetchPhotoIdeasFromBackend(aiCtx)
+    .then(data => {
+      hideAILoading();
+      renderPhotoIdeasFromBackend(data.ideas);
+    })
+    .catch(err => {
+      hideAILoading();
+      console.error("AI fetch failed:", err);
+    });
+}
+
+
 /* ================= ANALYSIS ================= */
 
 function analyseLocation(lat, lng) {
@@ -291,20 +322,7 @@ function updateForTime(time) {
   renderConditions(state.lat, state.lng, az, el, state.buildings);
   renderFilmSuggestions(time, az, el, state.buildings);
 
-const aiCtx = buildAIContext(state, time, az, el);
 
-showAILoading();
-
-fetchPhotoIdeasFromBackend(aiCtx)
-  .then(data => {
-    hideAILoading();
-    renderPhotoIdeasFromBackend(data.ideas);
-  })
-  .catch(err => {
-    hideAILoading();
-    console.error("AI fetch failed:", err);
-  });
-}
 
 /* ================= FILM RECOMMENDER ================= */
 
@@ -452,5 +470,4 @@ return true;}
 
 </body>
 </html>
-
 
