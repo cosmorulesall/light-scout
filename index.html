@@ -308,7 +308,7 @@ function setupSlider(times) {
 }
 
 function updateForTime(time) {
-  if (!state) return;
+  if (!state || !state.streets || !state.buildings) return;
 
   const pos = SunCalc.getPosition(time, state.lat, state.lng);
   const az = (pos.azimuth * 180 / Math.PI + 180) % 360;
@@ -470,5 +470,6 @@ return true;}
 
 </body>
 </html>
+
 
 
